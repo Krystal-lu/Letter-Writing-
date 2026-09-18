@@ -14,17 +14,15 @@ async function startServer() {
 
   // Health check
   app.get("/api/health", (_req, res) => {
+    const rawKey =
+      process.env.GEMINI_API_KEY ||
+      process.env.GOOGLE_API_KEY ||
+      "";
+    const cleanedKey = rawKey.trim().replace(/^["']|["']$/g, "").trim();
     res.json({
       status: "ok",
-      app: "Letterly",
-      env: {
-        hasGeminiKey: Boolean(
-          process.env.GEMINI_API_KEY ||
-          process.env.GOOGLE_API_KEY ||
-          process.env.VITE_GEMINI_API_KEY
-        ),
-        expectedEnvVar: "GEMINI_API_KEY",
-      },
+      hasGeminiKey: Boolean(cleanedKey),
+      environment: process.env.NODE_ENV || "development",
     });
   });
 
@@ -43,14 +41,17 @@ async function startServer() {
       console.error("=== LETTERLY SERVER API GENERATE ERROR ===");
       console.error("Error Message:", error?.message);
       if (error?.stack) console.error("Error Stack:", error.stack);
-      console.error("Environment Check:", {
-        hasGEMINI_API_KEY: Boolean(process.env.GEMINI_API_KEY),
-        hasGOOGLE_API_KEY: Boolean(process.env.GOOGLE_API_KEY),
-        hasVITE_GEMINI_API_KEY: Boolean(process.env.VITE_GEMINI_API_KEY),
-      });
       console.error("==========================================");
+      const isMissingKey =
+        error?.message?.includes("Gemini API key is not available") ||
+        error?.message?.includes("GEMINI_API_KEY");
+
+      const userMessage = isMissingKey
+        ? "Gemini API key is not available on the server."
+        : "Unable to generate a message right now. Please try again.";
+
       res.status(500).json({
-        error: "Something went wrong while generating your message. Please try again.",
+        error: userMessage,
         debugError: error?.message || String(error),
       });
     }
@@ -72,8 +73,16 @@ async function startServer() {
       console.error("Error Message:", error?.message);
       if (error?.stack) console.error("Error Stack:", error.stack);
       console.error("=========================================");
+      const isMissingKey =
+        error?.message?.includes("Gemini API key is not available") ||
+        error?.message?.includes("GEMINI_API_KEY");
+
+      const userMessage = isMissingKey
+        ? "Gemini API key is not available on the server."
+        : "Unable to generate a message right now. Please try again.";
+
       res.status(500).json({
-        error: "Something went wrong while rewriting your message. Please try again.",
+        error: userMessage,
         debugError: error?.message || String(error),
       });
     }

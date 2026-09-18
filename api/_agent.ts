@@ -42,18 +42,17 @@ CLARIFICATION RULES:
 - If the user says "I don't know", "I don't want to explain", "Just help me write something", or if forceDraft is true, DO NOT ask clarification questions: status MUST be "letter". Use neutral phrasing that assumes no unknown facts.`;
 
 export function getGeminiClient(): GoogleGenAI {
-  const apiKey =
+  const rawKey =
     process.env.GEMINI_API_KEY ||
     process.env.GOOGLE_API_KEY ||
-    process.env.VITE_GEMINI_API_KEY;
+    "";
+  const apiKey = rawKey.trim().replace(/^["']|["']$/g, "").trim();
 
   if (!apiKey) {
     console.error(
-      "CRITICAL: Neither GEMINI_API_KEY, GOOGLE_API_KEY, nor VITE_GEMINI_API_KEY is defined in environment variables."
+      "CRITICAL: GEMINI_API_KEY is not defined in environment variables."
     );
-    throw new Error(
-      "GEMINI_API_KEY environment variable is missing. Please add GEMINI_API_KEY to your Vercel Project Settings > Environment Variables."
-    );
+    throw new Error("Gemini API key is not available on the server.");
   }
 
   return new GoogleGenAI({

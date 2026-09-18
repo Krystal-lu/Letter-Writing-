@@ -78,7 +78,7 @@ export default function App() {
         if (data?.debugError) {
           console.error('[Letterly Server Debug Error]:', data.debugError);
         }
-        throw new Error(data?.debugError || data?.error || 'API returned an error');
+        throw new Error(data?.error || data?.debugError || 'Unable to generate a message right now. Please try again.');
       }
 
       if (data.status === 'clarification' && data.clarificationQuestions?.length && !forceDraft) {
@@ -182,7 +182,7 @@ export default function App() {
         if (data?.debugError) {
           console.error('[Letterly Server Debug Error]:', data.debugError);
         }
-        throw new Error(data?.debugError || data?.error || 'Failed to rewrite message');
+        throw new Error(data?.error || data?.debugError || 'Unable to rewrite message right now. Please try again.');
       }
       if (data.letter) {
         setGeneratedLetter(data.letter);
@@ -191,7 +191,7 @@ export default function App() {
       }
     } catch (err: any) {
       console.error('Error rewriting letter:', err);
-      setErrorMessage(err?.message || 'Something went wrong while generating your message. Please try again.');
+      setErrorMessage(err?.message || 'Unable to rewrite message right now. Please try again.');
     } finally {
       setIsRewriting(false);
     }

@@ -10,19 +10,23 @@ export default function handler(req: any, res: any) {
     return res.status(200).end();
   }
 
-  const hasGeminiKey = Boolean(
+  const rawKey =
     process.env.GEMINI_API_KEY ||
     process.env.GOOGLE_API_KEY ||
-    process.env.VITE_GEMINI_API_KEY
-  );
+    "";
+  const cleanedKey = rawKey.trim().replace(/^["']|["']$/g, "").trim();
+  const hasGeminiKey = Boolean(cleanedKey);
+
+  const environment =
+    process.env.VERCEL_ENV ||
+    process.env.NODE_ENV ||
+    "production";
 
   return res.status(200).json({
     status: "ok",
-    app: "Letterly",
-    env: {
-      hasGeminiKey,
-      expectedEnvVar: "GEMINI_API_KEY",
-    },
+    hasGeminiKey,
+    environment,
   });
 }
+
 

@@ -36,15 +36,14 @@ CLARIFICATION RULES:
 - If the user says "I don't know", "I don't want to explain", "Just help me write something", or if forceDraft is true, DO NOT ask clarification questions: status MUST be "letter". Use neutral phrasing that assumes no unknown facts.`;
 
 function getGeminiClient(): GoogleGenAI {
-  const apiKey =
+  const rawKey =
     process.env.GEMINI_API_KEY ||
     process.env.GOOGLE_API_KEY ||
-    process.env.VITE_GEMINI_API_KEY;
+    "";
+  const apiKey = rawKey.trim().replace(/^["']|["']$/g, "").trim();
 
   if (!apiKey) {
-    throw new Error(
-      "GEMINI_API_KEY environment variable is missing on server. Please add GEMINI_API_KEY in Vercel Settings > Environment Variables, then redeploy."
-    );
+    throw new Error("Gemini API key is not available on the server.");
   }
 
   return new GoogleGenAI({
@@ -195,8 +194,16 @@ Respond in JSON according to schema.
     return res.status(200).json(parsed);
   } catch (error: any) {
     console.error("=== LETTERLY VERCEL API GENERATE ERROR ===", error);
+    const isMissingKey =
+      error?.message?.includes("Gemini API key is not available") ||
+      error?.message?.includes("GEMINI_API_KEY");
+
+    const userMessage = isMissingKey
+      ? "Gemini API key is not available on the server."
+      : "Unable to generate a message right now. Please try again.";
+
     return res.status(500).json({
-      error: "Something went wrong while generating your message. Please try again.",
+      error: userMessage,
       debugError: error?.message || String(error),
     });
   }
