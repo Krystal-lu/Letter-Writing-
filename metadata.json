@@ -1,0 +1,6 @@
+{
+  "name": "Letterly",
+  "description": "Say what you mean, even when it’s hard. AI-powered personal letter writing assistant.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
