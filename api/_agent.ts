@@ -41,14 +41,50 @@ CLARIFICATION RULES:
 - Do NOT interrogate or ask repeatedly.
 - If the user says "I don't know", "I don't want to explain", "Just help me write something", or if forceDraft is true, DO NOT ask clarification questions: status MUST be "letter". Use neutral phrasing that assumes no unknown facts.`;
 
-export function getGeminiClient(): GoogleGenAI {
-  const rawKey =
-    process.env.GEMINI_API_KEY ||
-    process.env.GOOGLE_API_KEY ||
-    "";
-  const apiKey = rawKey.trim().replace(/^["']|["']$/g, "").trim();
+export function getGeminiApiKey(): { key: string | null; matchedVarName: string | null } {
+  const explicitCandidates = [
+    "GEMINI_API_KEY",
+    "GOOGLE_API_KEY",
+    "VITE_GEMINI_API_KEY",
+    "GOOGLE_GEMINI_API_KEY",
+    "GEMINI_KEY",
+  ];
 
-  if (!apiKey) {
+  for (const name of explicitCandidates) {
+    const val = process.env[name];
+    if (typeof val === "string") {
+      const cleaned = val.trim().replace(/^["']|["']$/g, "").trim();
+      if (cleaned.length > 0) {
+        return { key: cleaned, matchedVarName: name };
+      }
+    }
+  }
+
+  for (const [key, val] of Object.entries(process.env)) {
+    if (typeof val !== "string") continue;
+    const cleanedVal = val.trim().replace(/^["']|["']$/g, "").trim();
+    if (!cleanedVal) continue;
+
+    const normalizedKey = key.trim().toUpperCase().replace(/[^A-Z0-9]/g, "_");
+    if (
+      normalizedKey === "GEMINI_API_KEY" ||
+      normalizedKey === "GOOGLE_API_KEY" ||
+      normalizedKey === "VITE_GEMINI_API_KEY" ||
+      normalizedKey === "GOOGLE_GEMINI_API_KEY" ||
+      normalizedKey === "GEMINI_KEY" ||
+      (normalizedKey.includes("GEMINI") && normalizedKey.includes("KEY"))
+    ) {
+      return { key: cleanedVal, matchedVarName: key };
+    }
+  }
+
+  return { key: null, matchedVarName: null };
+}
+
+export function getGeminiClient(): GoogleGenAI {
+  const { key } = getGeminiApiKey();
+
+  if (!key) {
     console.error(
       "CRITICAL: GEMINI_API_KEY is not defined in environment variables."
     );
@@ -56,7 +92,7 @@ export function getGeminiClient(): GoogleGenAI {
   }
 
   return new GoogleGenAI({
-    apiKey,
+    apiKey: key,
     httpOptions: {
       headers: {
         "User-Agent": "aistudio-build",
@@ -66,7 +102,7 @@ export function getGeminiClient(): GoogleGenAI {
 }
 
 async function generateWithFallback(ai: GoogleGenAI, configPayload: any) {
-  const modelsToTry = ["gemini-3.8-flash", "gemini-3.1-flash-lite"];
+  const modelsToTry = ["gemini-3.8-flash", "gemini-3.1-flash-lite", "gemini-2.5-flash"];
   let lastError: any = null;
 
   for (const model of modelsToTry) {
@@ -80,14 +116,16 @@ async function generateWithFallback(ai: GoogleGenAI, configPayload: any) {
       } catch (err: any) {
         lastError = err;
         const msg = String(err?.message || "");
-        console.warn(`[Letterly] Attempt failed on model ${model}:`, msg);
         if (
           msg.includes("503") ||
           msg.includes("high demand") ||
           msg.includes("UNAVAILABLE") ||
-          msg.includes("429")
+          msg.includes("429") ||
+          msg.includes("404") ||
+          msg.includes("NOT_FOUND") ||
+          msg.includes("not found")
         ) {
-          await new Promise((r) => setTimeout(r, 1000));
+          await new Promise((r) => setTimeout(r, 500));
           continue;
         }
         throw err;

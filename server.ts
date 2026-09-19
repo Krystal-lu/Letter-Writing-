@@ -14,15 +14,59 @@ async function startServer() {
 
   // Health check
   app.get("/api/health", (_req, res) => {
-    const rawKey =
-      process.env.GEMINI_API_KEY ||
-      process.env.GOOGLE_API_KEY ||
-      "";
-    const cleanedKey = rawKey.trim().replace(/^["']|["']$/g, "").trim();
+    const explicitCandidates = [
+      "GEMINI_API_KEY",
+      "GOOGLE_API_KEY",
+      "VITE_GEMINI_API_KEY",
+      "GOOGLE_GEMINI_API_KEY",
+      "GEMINI_KEY",
+    ];
+
+    let foundKey: string | null = null;
+    let matchedVarName: string | null = null;
+
+    for (const name of explicitCandidates) {
+      const val = process.env[name];
+      if (typeof val === "string") {
+        const cleaned = val.trim().replace(/^["']|["']$/g, "").trim();
+        if (cleaned.length > 0) {
+          foundKey = cleaned;
+          matchedVarName = name;
+          break;
+        }
+      }
+    }
+
+    if (!foundKey) {
+      for (const [key, val] of Object.entries(process.env)) {
+        if (typeof val !== "string") continue;
+        const cleanedVal = val.trim().replace(/^["']|["']$/g, "").trim();
+        if (!cleanedVal) continue;
+
+        const normalizedKey = key.trim().toUpperCase().replace(/[^A-Z0-9]/g, "_");
+        if (
+          normalizedKey === "GEMINI_API_KEY" ||
+          normalizedKey === "GOOGLE_API_KEY" ||
+          normalizedKey === "VITE_GEMINI_API_KEY" ||
+          normalizedKey === "GOOGLE_GEMINI_API_KEY" ||
+          normalizedKey === "GEMINI_KEY" ||
+          (normalizedKey.includes("GEMINI") && normalizedKey.includes("KEY"))
+        ) {
+          foundKey = cleanedVal;
+          matchedVarName = key;
+          break;
+        }
+      }
+    }
+
     res.json({
       status: "ok",
-      hasGeminiKey: Boolean(cleanedKey),
+      hasGeminiKey: Boolean(foundKey),
       environment: process.env.NODE_ENV || "development",
+      diagnostics: {
+        matchedVarName,
+        availableEnvKeys: Object.keys(process.env).sort(),
+      },
     });
   });
 
